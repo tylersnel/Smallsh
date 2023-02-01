@@ -54,9 +54,17 @@ int main(int argc, char *argv[])
         token = strtok(NULL, ifs);
         i++;
       }
-      while(int j = 0, j<i, j++)
-      //char *ret = search_replace(&word_copies[0], "i", "p");
-      //printf("%s", word_copies[0]); 
+      for (int j = 0; j<i; j++){
+        char *needle[]={"~/", "$$", "$?", "$!"};
+        for (int needle_count =0; needle_count < 4; needle_count++){
+          char *ret = search_replace(&word_copies[j], needle[needle_count], "p");
+        }
+      }
+      int w=0;
+      while(word_copies[w]){
+        printf("%s\n", word_copies[w]);
+        w++;
+      }
    }    
 
   free(line);
