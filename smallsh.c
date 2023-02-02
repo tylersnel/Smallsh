@@ -24,9 +24,10 @@ int parser(char **copies);
 int pound_loc = -1;
 int ampersand_loc = -1;
 int less_loc = -1;
-int less_token = -1;
+int less_file = -1;
 int greater_loc = -1;
-int greater_token = -1;
+int greater_file = -1;
+int token_start;
 
 int main(int argc, char *argv[])
   {
@@ -150,31 +151,45 @@ int parser(char **copies)
     i=pound_loc;
     if ((i-2) >= 0){
     
-      if (strcmp(copies[i-1], "&") == 0){// if ampersand, that index point becomes the check for < amd > this i decreased to match apmersand 
+      if (strcmp(copies[i-1], "&") == 0 ){// if ampersand, that index point becomes the check for < amd > this i decreased to match apmersand 
         ampersand_loc=i-1;
         i=i-1;
       }
+      else{
+        if(strcmp(copies[i-2], ">") != 0 && strcmp(copies[i-2], "<") != 0){
+
+          token_start=-1;
+          printf("%d", token_start);
+          return 0;
+        }
+      
+      }
       if(strcmp(copies[i-2],"<")==0){
         less_loc = i-2;
-        less_token = i-1;
+        less_file = i-1;
       }
       if(strcmp(copies[i-2],">")==0){
         greater_loc = i-2;
-        greater_token = i-1;
+        greater_file = i-1;
       }
     }
-    if ((i-4) >= 0){
+    if ((i-4) >= 0){//checking for further < or > after initial < or >
     
       if(strcmp(copies[i-4],"<")==0){
         less_loc = i-4;
-        less_token = i-3;
+        less_file = i-3;
       }
       if(strcmp(copies[i-4],">")==0){
         greater_loc = i-4;
-        greater_token = i-3;
+        greater_file = i-3;
       }
     }
+   if(less_loc==-1 && greater_loc!=-1) token_start=greater_loc;
+   else if (less_loc!=-1 && greater_loc==-1) token_start=less_loc;
+   else{
+     token_start= (less_loc>greater_loc) ? greater_loc : less_loc;
     
-   printf("#=%d, &=%d, < = %d, less_tock = %d, >=%d, greater_toc=%d",pound_loc, ampersand_loc, less_loc, less_token, greater_loc, greater_token);
+   }
+   printf("#=%d, &=%d, < = %d, less_tock = %d, >=%d, greater_toc=%d token_start= %d",pound_loc, ampersand_loc, less_loc, less_file, greater_loc, greater_file, token_start);
    return 0;
   }
