@@ -24,6 +24,11 @@ void exit_func(int exit_code);
 int cd_func(char const *path);
 int non_built_func(char *arguments[]);
 
+//globals variabels for expansion
+char *dolla_question = NULL;
+char *dolla_exclamation = NULL;
+
+
 //global variables for parser
 int pound_loc = -1;
 int ampersand_loc = -1;
@@ -45,8 +50,9 @@ int main(int argc, char *argv[])
       char *word_copies[515]={NULL};
       char *line = NULL;
       size_t n = 0;
-      fprintf(stderr,"%s", getenv("PS1"));
-      
+      //fprintf(stderr,"%s", getenv("PS1"));
+      printf("%s", getenv("PS1"));      
+
       ssize_t line_length = getline(&line, &n, stdin);
       if (line_length==1) goto END_LOOP;
       //printf("%s", getenv("IFS"));
@@ -95,7 +101,7 @@ int main(int argc, char *argv[])
           char status_buffer[10];
           sprintf(status_buffer, "%d", child_status);
           
-          exit_val=atoi(status_buffer);
+          exit_val=atoi(status_buffer);//FIX THIS*************************************
         }
         exit_func(exit_val);
       }
@@ -117,8 +123,7 @@ int main(int argc, char *argv[])
         }
       }
 
-      //MOVE THIS*******************************************
-      non_built_func(word_copies);
+     
       /*
        * Used of expansion
        * Two for loops, to check each occurance with each word.
@@ -126,30 +131,39 @@ int main(int argc, char *argv[])
        * if expansion needed.
        */
       char *home_get=getenv("HOME");
-      strcat(home_get,"/");
       
       int pid_t=getpid();
       char pid_buffer[50];
       sprintf(pid_buffer,"%d", pid_t);
       
-      int child_status;
-      waitpid(pid_t, &child_status, 0);
-      char status_buffer[10];
-      sprintf(status_buffer, "%d", child_status);
+      char *status_exit=NULL;
+      if (dolla_question == NULL){
+        status_exit="0";
+      }
+      else{
+        status_exit=dolla_question;
+      }
 
+      char *pid_background=NULL;
+      if (dolla_exclamation == NULL){
+        pid_background="";
+      }
+      else{
+        pid_background=dolla_exclamation;
+      }
+            
       char *needle[]={"~/", "$$", "$?", "$!"};
-      char *sub[]={home_get, pid_buffer, status_buffer, "holder"};
+      char *sub[]={home_get, pid_buffer, status_exit, pid_background};
       for (int j = 0; j<i; j++){
         for (int needle_count =0; needle_count < 4; needle_count++){
           char *ret = search_replace(&word_copies[j], needle[needle_count], sub[needle_count]);
         }
       }
-     int w=0;
-      while(word_copies[w]){
-        printf("%s\n", word_copies[w]);
-        w++;
-      }
+     
     parser(word_copies);
+    int ret_nbf = non_built_func(word_copies);
+    if(ret_nbf==0) goto END_LOOP;
+
 END_LOOP:
     free(line);
    }    
@@ -263,10 +277,7 @@ void exit_func(int exit_code)
 
 int cd_func(char const *path)
 {
-  char i[100];
-  printf("%s\n", path);
   if(chdir(path) == -1) err(errno, "chdir");
-  printf("%s\n", getcwd(i,100));
   return 0;
 
 }
@@ -297,9 +308,7 @@ int non_built_func(char *arguments[])
     break;
   default:
     spawnPid =waitpid(spawnPid, &child_status, 0);
-    printf("PARENT(%d): child(%d) terminated. Exiting\n", getpid(), spawnPid);
-		exit(0);
-		break;
+		return 0;
+    break;
   }
-  return 0;
 }
