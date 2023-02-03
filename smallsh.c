@@ -16,9 +16,13 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <ctype.h>
 
 char *search_replace(char *restrict *restrict haystack, char const *restrict needle, char const *restrict sub);
 int parser(char **copies);
+void exit_func(int exit_code);
+int cd_func(char const *path);
+int non_built_func(char *arguments[]);
 
 //global variables for parser
 int pound_loc = -1;
@@ -31,9 +35,6 @@ int token_start;
 
 int main(int argc, char *argv[])
   {
-    char *word_copies[515]={NULL};
-    char *line = NULL;
-    size_t n = 0;
     /*
      * Author: Ryan Gambord
      * Date: Unkown
@@ -41,10 +42,14 @@ int main(int argc, char *argv[])
      */
     char *ifs=getenv("IFS");
     for (;;) {
-      printf("%s", getenv("PS1"));
-      //printf("%s", getenv("IFS"));
-      ssize_t line_length = getline(&line, &n, stdin);
+      char *word_copies[515]={NULL};
+      char *line = NULL;
+      size_t n = 0;
+      fprintf(stderr,"%s", getenv("PS1"));
       
+      ssize_t line_length = getline(&line, &n, stdin);
+      if (line_length==1) goto END_LOOP;
+      //printf("%s", getenv("IFS"));
       if(line_length==-1){ // Error check for getline()
         err(errno, "getline()");
       }
@@ -67,6 +72,53 @@ int main(int argc, char *argv[])
         token = strtok(NULL, ifs);
         i++;
       }
+      /*
+       * Checks for exit_func
+       * Checks if too many arguments or if argument is a digit or not
+       * Returns errors if need be or calls exit_func
+       */
+      if(strcmp(word_copies[0], "exit")==0){
+        if(word_copies[2]) errx(1,"Too many arguments");
+           
+        int exit_val;
+        if(word_copies[1]){
+          if (!isdigit(*word_copies[1])) errx(1, "Argument not a digit");
+          else exit_val = atoi(word_copies[1]);
+        }
+        else{ // if no argument provided, gets exit status of last foreground command
+          int pid_t=getpid();
+          char pid_buffer[50];
+          sprintf(pid_buffer,"%d", pid_t);
+          
+          int child_status;
+          waitpid(pid_t, &child_status, 0);
+          char status_buffer[10];
+          sprintf(status_buffer, "%d", child_status);
+          
+          exit_val=atoi(status_buffer);
+        }
+        exit_func(exit_val);
+      }
+
+      if(strcmp(word_copies[0], "cd")==0){
+        int cd_ret = -1;
+        if(word_copies[2]) errx(1, "Too many arguments");
+        
+        if(word_copies[1]){ 
+          cd_ret =cd_func(word_copies[1]);
+        }
+        
+        else{
+          char *home_path=getenv("HOME");
+          cd_ret = cd_func(home_path);
+        }
+        if(cd_ret == 0){
+          goto END_LOOP;
+        }
+      }
+
+      //MOVE THIS*******************************************
+      non_built_func(word_copies);
       /*
        * Used of expansion
        * Two for loops, to check each occurance with each word.
@@ -92,15 +144,16 @@ int main(int argc, char *argv[])
           char *ret = search_replace(&word_copies[j], needle[needle_count], sub[needle_count]);
         }
       }
-     // int w=0;
-      //while(word_copies[w]){
-        //printf("%s ", word_copies[w]);
-        //w++;
-      //}
+     int w=0;
+      while(word_copies[w]){
+        printf("%s\n", word_copies[w]);
+        w++;
+      }
     parser(word_copies);
+END_LOOP:
+    free(line);
    }    
 
-  free(line);
   }
 
 /*
@@ -159,7 +212,7 @@ int parser(char **copies)
         if(strcmp(copies[i-2], ">") != 0 && strcmp(copies[i-2], "<") != 0){
 
           token_start=-1;
-          printf("%d", token_start);
+          //printf("%d", token_start);
           return 0;
         }
       
@@ -190,6 +243,63 @@ int parser(char **copies)
      token_start= (less_loc>greater_loc) ? greater_loc : less_loc;
     
    }
-   printf("#=%d, &=%d, < = %d, less_tock = %d, >=%d, greater_toc=%d token_start= %d",pound_loc, ampersand_loc, less_loc, less_file, greater_loc, greater_file, token_start);
+   //printf("#=%d, &=%d, < = %d, less_tock = %d, >=%d, greater_toc=%d token_start= %d",pound_loc, ampersand_loc, less_loc, less_file, greater_loc, greater_file, token_start);
    return 0;
   }
+
+/*
+ * Function Name: exit_func
+ * Arguments: Int
+ * Description: Sends SIGINT to child processes, prints to stderr, 
+ * exits with argument int
+ * Returns: None
+ */
+void exit_func(int exit_code)
+{
+  //All child processes in the same process group shall be sent a SIGINT signal before exiting (see KILL(2)
+  fprintf(stderr,"%s","\nexit\n");
+  exit(exit_code);
+}
+
+int cd_func(char const *path)
+{
+  char i[100];
+  printf("%s\n", path);
+  if(chdir(path) == -1) err(errno, "chdir");
+  printf("%s\n", getcwd(i,100));
+  return 0;
+
+}
+/*
+ * 
+ * Description: Used for commands that aren't used in non built functions
+ * Based off the example from canvas Process API page.
+ * Author: Unknown
+ * Date: Unknown
+ * Source:https://canvas.oregonstate.edu/courses/1901764/pages/exploration-process-api-executing-a-new-program?module_item_id=22777102 
+ * */
+int non_built_func(char *arguments[])
+{
+  int child_status;
+    
+  pid_t spawnPid = fork();
+  
+  switch(spawnPid){
+  case -1:
+    perror("fork()\n");
+    exit(1);
+    break;
+  case 0:
+    printf("running child pid=%d", getpid());
+    execvp(arguments[0],arguments);
+    perror("execvp()");
+    exit(2);
+    break;
+  default:
+    spawnPid =waitpid(spawnPid, &child_status, 0);
+    printf("PARENT(%d): child(%d) terminated. Exiting\n", getpid(), spawnPid);
+		exit(0);
+		break;
+  }
+  return 0;
+}
