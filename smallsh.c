@@ -104,6 +104,7 @@ int main(int argc, char *argv[])
           exit_val=atoi(status_buffer);//FIX THIS*************************************
         }
         exit_func(exit_val);
+
       }
 
       if(strcmp(word_copies[0], "cd")==0){
@@ -122,7 +123,7 @@ int main(int argc, char *argv[])
           goto END_LOOP;
         }
       }
-
+      if(strcmp(word_copies[0], "ls")==0 || strcmp(word_copies[0], "pwd")==0) goto NON_BUILT;
      
       /*
        * Used of expansion
@@ -131,7 +132,8 @@ int main(int argc, char *argv[])
        * if expansion needed.
        */
       char *home_get=getenv("HOME");
-      
+  
+
       int pid_t=getpid();
       char pid_buffer[50];
       sprintf(pid_buffer,"%d", pid_t);
@@ -161,6 +163,7 @@ int main(int argc, char *argv[])
       }
      
     parser(word_copies);
+NON_BUILT:
     int ret_nbf = non_built_func(word_copies);
     if(ret_nbf==0) goto END_LOOP;
 
@@ -206,7 +209,7 @@ exit:
     return str;
   }
 
-int parser(char **copies)
+int parser(char *copies[])
   { 
     int i=0;
     while(copies[i]){
@@ -227,7 +230,7 @@ int parser(char **copies)
 
           token_start=-1;
           //printf("%d", token_start);
-          return 0;
+          goto exit;
         }
       
       }
@@ -257,7 +260,15 @@ int parser(char **copies)
      token_start= (less_loc>greater_loc) ? greater_loc : less_loc;
     
    }
-   //printf("#=%d, &=%d, < = %d, less_tock = %d, >=%d, greater_toc=%d token_start= %d",pound_loc, ampersand_loc, less_loc, less_file, greater_loc, greater_file, token_start);
+exit:
+   if (pound_loc!=-1){
+       
+       //free(copies[pound_loc]);
+       //copies[pound_loc]=NULL;
+       //pound_loc++;
+     }
+   //}
+
    return 0;
   }
 
@@ -270,6 +281,7 @@ int parser(char **copies)
  */
 void exit_func(int exit_code)
 {
+  printf("%i", exit_code);
   //All child processes in the same process group shall be sent a SIGINT signal before exiting (see KILL(2)
   fprintf(stderr,"%s","\nexit\n");
   exit(exit_code);
@@ -294,7 +306,7 @@ int non_built_func(char *arguments[])
   int child_status;
     
   pid_t spawnPid = fork();
-  
+   
   switch(spawnPid){
   case -1:
     perror("fork()\n");
