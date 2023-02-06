@@ -23,6 +23,7 @@ int parser(char **copies);
 void exit_func(int exit_code);
 int cd_func(char const *path);
 int non_built_func(char *arguments[]);
+void reset_globals();
 
 //globals variabels for expansion
 char *dolla_question=NULL;
@@ -30,7 +31,7 @@ char *dolla_exclamation = NULL;
 
 
 //global variables for parser
-int pound_loc = -1;
+int end_loc = -1;
 int ampersand_loc = -1;
 int less_loc = -1;
 int less_file = -1;
@@ -44,14 +45,21 @@ int main(int argc, char *argv[])
      * Author: Ryan Gambord
      * Date: Unkown
      * URL: https://canvas.oregonstate.edu/courses/1901764/assignments/9087347?module_item_id=22777104
-     */
+     */ 
+    char *line = NULL;
+    size_t n = 0;
     char *ifs=getenv("IFS");
     for (;;) {
       char *word_copies[515]={NULL};
-      char *line = NULL;
-      size_t n = 0;
-      //fprintf(stderr,"%s", getenv("PS1"));
-      printf("%s", getenv("PS1"));      
+
+      char *pEnv;
+      if(( pEnv=getenv("PS1"))!=NULL){
+          fprintf(stderr,"%s", getenv("PS1"));
+      }
+      else{
+          fprintf(stderr, "%s", "");
+      }
+      //printf("%s", getenv("PS1"));      
 
       ssize_t line_length = getline(&line, &n, stdin);
       if (line_length==1) goto END_LOOP;
@@ -80,6 +88,7 @@ int main(int argc, char *argv[])
 
         i++;
       }
+     
       /*
        * Checks for exit_func
        * Checks if too many arguments or if argument is a digit or not
@@ -169,10 +178,10 @@ int main(int argc, char *argv[])
 NON_BUILT:
     
     non_built_func(word_copies);
-    
+    reset_globals();
 
 END_LOOP:
-    free(line);
+    continue;
    }    
 
   }
@@ -217,12 +226,11 @@ int parser(char *copies[])
   { 
     int i=0;
     while(copies[i]){
-        if (strcmp(copies[i], "#") == 0) pound_loc=i;
         i++;
       }
-    if(pound_loc<0) pound_loc=i;//if end of array and not # hit
+    end_loc=i;//end of array
     
-    i=pound_loc;
+    i=end_loc;
     if ((i-2) >= 0){
     
       if (strcmp(copies[i-1], "&") == 0 ){// if ampersand, that index point becomes the check for < amd > this i decreased to match apmersand 
@@ -233,7 +241,6 @@ int parser(char *copies[])
         if(strcmp(copies[i-2], ">") != 0 && strcmp(copies[i-2], "<") != 0){
 
           token_start=-1;
-          //printf("%d", token_start);
           goto exit;
         }
       
@@ -265,10 +272,10 @@ int parser(char *copies[])
     
    }
 exit:
-   if (pound_loc!=-1){
+   if (greater_loc>-1){
 
-       //free(copies[pound_loc]);
-       //copies[pound_loc]=NULL;
+       free(copies[greater_loc]);
+       copies[greater_loc]=NULL;
        //char *x =copies[pound_loc-1];
        //char *t =copies[pound_loc+1]; 
        //printf("%s %s", x, t);
@@ -336,7 +343,6 @@ int non_built_func(char *arguments[])
     exit(1);
     break;
   case 0:
-    printf("running child pid=%d", getpid());
     execvp(arguments[0],arguments);
     perror("execvp()");
     exit(2);
@@ -352,4 +358,20 @@ int non_built_func(char *arguments[])
     printf("Child %d exited abnormally due to signal %d\n", spawnPid, WTERMSIG(child_status));
   }
   return 0;
+}
+
+/*
+ * Desricption: Resets glbals variables used in parsing back to -1 for new loop
+ * Arguments: None
+ * Reutnrs: None
+ */
+void reset_globals()
+{
+    end_loc = -1;
+    ampersand_loc = -1;
+    less_loc = -1;
+    less_file = -1;
+    greater_loc = -1;
+    greater_file = -1;
+    token_start = -1;
 }
