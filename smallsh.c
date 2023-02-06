@@ -25,7 +25,7 @@ int cd_func(char const *path);
 int non_built_func(char *arguments[]);
 
 //globals variabels for expansion
-char *dolla_question = NULL;
+char *dolla_question=NULL;
 char *dolla_exclamation = NULL;
 
 
@@ -73,9 +73,11 @@ int main(int argc, char *argv[])
       int i=0;
       while(token != NULL){
         char *copy_holder=strdup(token);
+        if(strcmp(copy_holder, "#")==0) break;//break out of the loop if # is found.
         if(!copy_holder) err(errno, "strdup()");//error check for strdup, returns NULL if failed
         word_copies[i]=copy_holder;
         token = strtok(NULL, ifs);
+
         i++;
       }
       /*
@@ -107,22 +109,7 @@ int main(int argc, char *argv[])
 
       }
 
-      if(strcmp(word_copies[0], "cd")==0){
-        int cd_ret = -1;
-        if(word_copies[2]) errx(1, "Too many arguments");
-        
-        if(word_copies[1]){ 
-          cd_ret =cd_func(word_copies[1]);
-        }
-        
-        else{
-          char *home_path=getenv("HOME");
-          cd_ret = cd_func(home_path);
-        }
-        if(cd_ret == 0){
-          goto END_LOOP;
-        }
-      }
+     
       if(strcmp(word_copies[0], "ls")==0 || strcmp(word_copies[0], "pwd")==0) goto NON_BUILT;
      
       /*
@@ -139,7 +126,7 @@ int main(int argc, char *argv[])
       sprintf(pid_buffer,"%d", pid_t);
       
       char *status_exit=NULL;
-      if (dolla_question == NULL){
+      if (!dolla_question){
         status_exit="0";
       }
       else{
@@ -154,18 +141,35 @@ int main(int argc, char *argv[])
         pid_background=dolla_exclamation;
       }
             
-      char *needle[]={"~/", "$$", "$?", "$!"};
+      char *needle[]={"~", "$$", "$?", "$!"};
       char *sub[]={home_get, pid_buffer, status_exit, pid_background};
       for (int j = 0; j<i; j++){
         for (int needle_count =0; needle_count < 4; needle_count++){
           char *ret = search_replace(&word_copies[j], needle[needle_count], sub[needle_count]);
         }
       }
+      if(strcmp(word_copies[0], "cd")==0){
+        int cd_ret = -1;
+        if(word_copies[2]) errx(1, "Too many arguments");
+        
+        if(word_copies[1]){ 
+          cd_ret =cd_func(word_copies[1]);
+        }
+        
+        else{
+          char *home_path=getenv("HOME");
+          cd_ret = cd_func(home_path);
+        }
+        if(cd_ret == 0){
+          goto END_LOOP;
+        }
+      }
      
     parser(word_copies);
 NON_BUILT:
-    int ret_nbf = non_built_func(word_copies);
-    if(ret_nbf==0) goto END_LOOP;
+    
+    non_built_func(word_copies);
+    
 
 END_LOOP:
     free(line);
@@ -262,10 +266,12 @@ int parser(char *copies[])
    }
 exit:
    if (pound_loc!=-1){
-       
+
        //free(copies[pound_loc]);
        //copies[pound_loc]=NULL;
-       //pound_loc++;
+       //char *x =copies[pound_loc-1];
+       //char *t =copies[pound_loc+1]; 
+       //printf("%s %s", x, t);
      }
    //}
 
@@ -281,10 +287,27 @@ exit:
  */
 void exit_func(int exit_code)
 {
-  printf("%i", exit_code);
   //All child processes in the same process group shall be sent a SIGINT signal before exiting (see KILL(2)
-  fprintf(stderr,"%s","\nexit\n");
+  //printf("%d", exit_code);
+  pid_t spawnpid = -5;
+	int childStatus;
+	int childPid;
+	// If fork is successful, the value of spawnpid will be 0 in the child, the child's pid in the parent
+	spawnpid = fork();
+	switch (spawnpid){
+	case -1:
+		perror("fork() failed!");
+		exit(1);
+		break;
+	case 0:
+		// spawnpid is 0 in the child
+		kill(0,SIGINT);
+		break;
+  default:
+  childPid=wait(&childStatus);
+  fprintf(stderr,"\nexit\n");
   exit(exit_code);
+  }
 }
 
 int cd_func(char const *path)
@@ -320,7 +343,13 @@ int non_built_func(char *arguments[])
     break;
   default:
     spawnPid =waitpid(spawnPid, &child_status, 0);
-		return 0;
     break;
   }
+  if(WIFEXITED(child_status)){
+    dolla_question=realloc(dolla_question, 10*sizeof(int));
+    sprintf(dolla_question, "%d", WEXITSTATUS(child_status));
+  } else{
+    printf("Child %d exited abnormally due to signal %d\n", spawnPid, WTERMSIG(child_status));
+  }
+  return 0;
 }
