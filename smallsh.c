@@ -17,6 +17,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <fcntl.h>
 
 char *search_replace(char *restrict *restrict haystack, char const *restrict needle, char const *restrict sub);
 int parser(char **copies);
@@ -34,9 +35,9 @@ char *dolla_exclamation = NULL;
 int end_loc = -1;
 int ampersand_loc = -1;
 int less_loc = -1;
-int less_file = -1;
+char *less_file;
 int greater_loc = -1;
-int greater_file = -1;
+char *greater_file;
 int token_start;
 
 int main(int argc, char *argv[])
@@ -247,22 +248,22 @@ int parser(char *copies[])
       }
       if(strcmp(copies[i-2],"<")==0){
         less_loc = i-2;
-        less_file = i-1;
+        less_file = copies[i-1];
       }
       if(strcmp(copies[i-2],">")==0){
         greater_loc = i-2;
-        greater_file = i-1;
+        greater_file = copies[i-1];
       }
     }
     if ((i-4) >= 0){//checking for further < or > after initial < or >
     
       if(strcmp(copies[i-4],"<")==0){
         less_loc = i-4;
-        less_file = i-3;
+        less_file = copies[i-3];
       }
       if(strcmp(copies[i-4],">")==0){
         greater_loc = i-4;
-        greater_file = i-3;
+        greater_file = copies[i-3];
       }
     }
    if(less_loc==-1 && greater_loc!=-1) token_start=greater_loc;
@@ -276,13 +277,15 @@ exit:
 
        free(copies[greater_loc]);
        copies[greater_loc]=NULL;
-       //char *x =copies[pound_loc-1];
-       //char *t =copies[pound_loc+1]; 
-       //printf("%s %s", x, t);
      }
-   //}
+   if (less_loc>-1){
+       free(copies[less_loc]);
+       copies[less_loc]=NULL;
+       
+   }
 
    return 0;
+
   }
 
 /*
@@ -326,15 +329,15 @@ int cd_func(char const *path)
 /*
  * 
  * Description: Used for commands that aren't used in non built functions
- * Based off the example from canvas Process API page.
+ * Based off the example from canvas Process API page, Processes and I/O
  * Author: Unknown
  * Date: Unknown
- * Source:https://canvas.oregonstate.edu/courses/1901764/pages/exploration-process-api-executing-a-new-program?module_item_id=22777102 
+ * Sources:https://canvas.oregonstate.edu/courses/1901764/pages/exploration-process-api-executing-a-new-program?module_item_id=22777102 
+ *       https://canvas.oregonstate.edu/courses/1901764/pages/exploration-processes-and-i-slash-o?module_item_id=22777110
  * */
 int non_built_func(char *arguments[])
 {
   int child_status;
-    
   pid_t spawnPid = fork();
    
   switch(spawnPid){
@@ -343,6 +346,33 @@ int non_built_func(char *arguments[])
     exit(1);
     break;
   case 0:
+    if(greater_loc>-1){
+      int targetFD = open(greater_file, O_RDWR | O_CREAT | O_TRUNC, 0777);
+      if (targetFD == -1){
+        perror("target open()");
+        exit(1);
+      }
+
+      int result=dup2(targetFD, 1);
+      if (result == -1){
+        perror("target dup2()");
+        exit(2);
+      }
+    }
+
+    if(less_loc>-1){
+      int sourceFD = open(less_file, O_RDWR);
+      if (sourceFD == -1){
+        perror("source open()");
+        exit(1);
+      }
+
+      int result = dup2(sourceFD,0);
+      if (result == -1){
+        perror("source dup2()");
+        exit(2);
+      }      
+    }
     execvp(arguments[0],arguments);
     perror("execvp()");
     exit(2);
@@ -370,8 +400,10 @@ void reset_globals()
     end_loc = -1;
     ampersand_loc = -1;
     less_loc = -1;
-    less_file = -1;
+    free(less_file);
+    less_file=NULL;
     greater_loc = -1;
-    greater_file = -1;
+    free(greater_file);
+    greater_file=NULL;
     token_start = -1;
 }
