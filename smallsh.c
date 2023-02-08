@@ -129,7 +129,6 @@ int main(int argc, char *argv[])
        * if expansion needed.
        */
       char *home_get=getenv("HOME");
-  
 
       int pid_t=getpid();
       char pid_buffer[50];
@@ -154,9 +153,15 @@ int main(int argc, char *argv[])
       char *needle[]={"~", "$$", "$?", "$!"};
       char *sub[]={home_get, pid_buffer, status_exit, pid_background};
       for (int j = 0; j<i; j++){
-        for (int needle_count =0; needle_count < 4; needle_count++){
-          char *ret = search_replace(&word_copies[j], needle[needle_count], sub[needle_count]);
+        for (int needle_count =1; needle_count < 4; needle_count++){
+          if(strncmp(word_copies[j],"~/", 2)==0){
+            char *ret = search_replace(&word_copies[j], needle[0], home_get);
+          }
+          else{
+            char *ret = search_replace(&word_copies[j], needle[needle_count], sub[needle_count]);
+          }
         }
+
       }
       if(strcmp(word_copies[0], "cd")==0){
         int cd_ret = -1;
@@ -180,7 +185,6 @@ NON_BUILT:
     
     non_built_func(word_copies);
     reset_globals();
-
 END_LOOP:
     continue;
    }    
@@ -205,12 +209,13 @@ char *search_replace(char *restrict *restrict haystack, char const *restrict nee
         if (!str) goto exit;
         *haystack = str;
         str = *haystack + off;
+
       }
     memmove(str + sub_len, str + needle_len, haystack_len + 1 - off - needle_len);
     memcpy(str, sub, sub_len);
     haystack_len = haystack_len + sub_len - needle_len;
     str += sub_len;
-
+    if(strcmp(needle, "~") == 0) goto exit;
     }
     str = *haystack;
     if (sub_len < needle_len) {
@@ -301,7 +306,7 @@ void exit_func(int exit_code)
   //printf("%d", exit_code);
   pid_t spawnpid = -5;
 	int childStatus;
-	int childPid;
+  int ret;
 	// If fork is successful, the value of spawnpid will be 0 in the child, the child's pid in the parent
 	spawnpid = fork();
 	switch (spawnpid){
@@ -311,10 +316,14 @@ void exit_func(int exit_code)
 		break;
 	case 0:
 		// spawnpid is 0 in the child
-		kill(0,SIGINT);
+		ret = kill(0,SIGINT);
+    if(ret == -1){
+      perror("kill()");
+      exit(2);
+    }
 		break;
   default:
-  childPid=wait(&childStatus);
+  spawnpid=waitpid(spawnpid, &childStatus, WNOHANG);
   fprintf(stderr,"\nexit\n");
   exit(exit_code);
   }
