@@ -5,6 +5,7 @@
  */
 
 #define _POSIX_C_SOURCE 200809L
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <err.h>
@@ -59,6 +60,17 @@ int main(int argc, char *argv[])
     char *ifs=getenv("IFS");
     for (;;) {
       char *word_copies[515]={NULL};
+      
+      pid_t x;
+      int child_status;
+      x=waitpid(0, &child_status, WUNTRACED | WNOHANG);
+      if(x>0){
+        if(WIFEXITED(child_status)){
+          dolla_exclamation=realloc(dolla_exclamation, 10*sizeof(int));
+          sprintf(dolla_exclamation, "%d", x);
+          fprintf(stderr,"Child process %s done. Exit Status %d\n", dolla_exclamation ,WEXITSTATUS(child_status)); 
+        }
+      }
 
       char *pEnv;
       if(( pEnv=getenv("PS1"))!=NULL){
@@ -67,7 +79,6 @@ int main(int argc, char *argv[])
       else{
           fprintf(stderr, "%s", "");
       }
-      //printf("%s", getenv("PS1"));      
       ignore_action.sa_handler = NULL;
       ssize_t line_length = getline(&line, &n, stdin);
       if (line_length==1) goto END_LOOP;
@@ -295,6 +306,11 @@ exit:
        copies[less_loc]=NULL;
        
    }
+  if (ampersand_loc>-1){
+      free(copies[ampersand_loc]);
+      copies[ampersand_loc]=NULL;
+  } 
+
 
    return 0;
 
@@ -386,19 +402,33 @@ int non_built_func(char *arguments[])
         exit(2);
       }      
     }
+    if(ampersand_loc > -1){
+       
+    }
     execvp(arguments[0],arguments);
     perror("execvp()");
     exit(2);
     break;
   default:
-    spawnPid =waitpid(spawnPid, &child_status, 0);
-    break;
-  }
-  if(WIFEXITED(child_status)){
-    dolla_question=realloc(dolla_question, 10*sizeof(int));
-    sprintf(dolla_question, "%d", WEXITSTATUS(child_status));
-  } else{
-    printf("Child %d exited abnormally due to signal %d\n", spawnPid, WTERMSIG(child_status));
+    if(ampersand_loc==-1){
+      spawnPid =waitpid(spawnPid, &child_status, 0);
+      //int x = spawnPid;
+      if(WIFEXITED(child_status)){
+          dolla_question=realloc(dolla_question, 10*sizeof(int));
+          asprintf(&dolla_question, "%d", WEXITSTATUS(child_status));
+     } else{
+          printf("Child %d exited abnormally due to signal %d\n", spawnPid, WTERMSIG(child_status));
+     }
+      break;
+    }else{ 
+      dolla_exclamation=realloc(dolla_exclamation, 10*sizeof(int));
+      sprintf(dolla_exclamation, "%d", spawnPid);
+      spawnPid=waitpid(spawnPid, &child_status, WNOHANG); 
+     
+      break;
+   }
+  
+ 
   }
   return 0;
 }
