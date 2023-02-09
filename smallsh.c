@@ -44,12 +44,22 @@ int greater_loc = -1;
 char *greater_file;
 int token_start;
 
-
+void handle_SIGINT(int signo){
+fprintf(stderr, "Nothing");
+}
 
 int main(int argc, char *argv[])
   {
-    struct sigaction ignore_action = {};
-    ignore_action.sa_handler = SIG_IGN;
+    struct sigaction ignore_action_sigint = {}, ignore_action_sigtstp={}, SIGINT_action={}, SIGINT_default={};
+    ignore_action_sigint.sa_handler = SIG_IGN;
+    ignore_action_sigtstp.sa_handler = SIG_IGN;
+    SIGINT_default.sa_handler = SIG_DFL;
+    SIGINT_action.sa_handler = handle_SIGINT;
+    //sigfillset(&ignore_action_sigint.sa_mask);
+    //sigfillset(&ignore_action_sigtstp.sa_mask);
+    //sigfillset(&SIGINT_action.sa_mask);
+    sigaction(SIGINT, &ignore_action_sigint, &SIGINT_default);
+    sigaction(SIGTSTP, &ignore_action_sigtstp, NULL);
     /*
      * Author: Ryan Gambord
      * Date: Unkown
@@ -68,7 +78,17 @@ int main(int argc, char *argv[])
         if(WIFEXITED(child_status)){
           dolla_exclamation=realloc(dolla_exclamation, 10*sizeof(int));
           sprintf(dolla_exclamation, "%d", x);
-          fprintf(stderr,"Child process %s done. Exit Status %d\n", dolla_exclamation ,WEXITSTATUS(child_status)); 
+          fprintf(stderr,"Child process %s done. Exit Status %d\n", dolla_exclamation ,WEXITSTATUS(child_status));
+         
+        }
+        else if (WIFSTOPPED(child_status)){  
+            kill(x,SIGCONT);
+            dolla_exclamation=realloc(dolla_exclamation, 10*sizeof(int));
+            sprintf(dolla_exclamation, "%d", x);
+            fprintf(stderr,"Child process %s stopped. Continuing.\n", dolla_exclamation);  
+        }
+        else if (WIFSIGNALED(child_status)){
+            fprintf(stderr, "HAPPY");
         }
       }
 
@@ -79,15 +99,14 @@ int main(int argc, char *argv[])
       else{
           fprintf(stderr, "%s", "");
       }
-      ignore_action.sa_handler = NULL;
+      sigaction(SIGINT,&SIGINT_action, NULL);
       ssize_t line_length = getline(&line, &n, stdin);
       if (line_length==1) goto END_LOOP;
-      //printf("%s", getenv("IFS"));
+      
       if(line_length==-1){ // Error check for getline()
         err(errno, "getline()");
       }
-      ignore_action.sa_handler = SIG_IGN;
-      sigaction(SIGINT, &ignore_action, NULL);
+      sigaction(SIGINT, &ignore_action_sigint, NULL);
 
       if (!ifs){
         ifs=" \t\n";
@@ -325,25 +344,6 @@ exit:
  */
 void exit_func(int exit_code)
 {
-  //All child processes in the same process group shall be sent a SIGINT signal before exiting (see KILL(2)
-  //printf("%d", exit_code);
-  //int ret;
-	// If fork is successful, the value of spawnpid will be 0 in the child, the child's pid in the parent
-	//spawnpid = fork();
-	//switch (spawnpid){
-	//case -1:
-		//perror("fork() failed!");
-		//exit(1);
-		//break;
-	//case 0:
-		// spawnpid is 0 in the child
-    //if(ret == -1){
-      //perror("kill()");
-      //exit(2);
-    //}
-		//break;
-  //default:
-  //spawnpid=waitpid(spawnpid, &childStatus);
   fprintf(stderr,"\nexit\n");
   kill(0, SIGINT);
   exit(exit_code);
