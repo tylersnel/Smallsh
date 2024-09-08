@@ -6,7 +6,7 @@ Here’s a sample README for the assignment:
 
 ## Overview
 
-Welcome to the `smallsh` project! This assignment involves creating a simple shell program in C, akin to the Bash shell, but with a reduced feature set. The goal is to develop a functional shell named `smallsh` that executes command line instructions, handles input/output redirection, and manages foreground and background processes.
+A simple shell program in C, akin to the Bash shell, but with a reduced feature set. The goal was to develop a functional shell named `smallsh` that executes command line instructions, handles input/output redirection, and manages foreground and background processes.
 
 ## Features
 
