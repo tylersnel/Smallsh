@@ -1,7 +1,3 @@
-Here’s a sample README for the assignment:
-
----
-
 # smallsh - A Custom Shell Implementation
 
 ## Overview
