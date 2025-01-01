@@ -111,8 +111,7 @@ int main(int argc, char *argv[])
       if (!ifs){
         ifs=" \t\n";
       }
-    /*
-     * Loop that tokens line and also sends copies of the words
+    /* Loop that tokens line and also sends copies of the words
      * to word_copies array for later use.
      */ 
       char* token =strtok(line, ifs); 
@@ -150,7 +149,7 @@ int main(int argc, char *argv[])
           char status_buffer[10];
           sprintf(status_buffer, "%d", child_status);
           
-          exit_val=atoi(status_buffer);//FIX THIS*************************************
+          exit_val=atoi(status_buffer);
         }
         exit_func(exit_val);
 
@@ -265,6 +264,14 @@ exit:
     return str;
   }
 
+/*
+ * Function Name: parser
+ * Arguments: Int
+ * Description: Processes an array of strings
+ * and performs parsing and analysis for specific tokens, 
+ * looking for <, >, &, and file name
+ * Returns: None
+ */
 int parser(char *copies[])
   { 
     int i=0;
@@ -356,14 +363,13 @@ int cd_func(char const *path)
 
 }
 /*
- * 
  * Description: Used for commands that aren't used in non built functions
  * Based off the example from canvas Process API page, Processes and I/O
  * Author: Unknown
  * Date: Unknown
  * Sources:https://canvas.oregonstate.edu/courses/1901764/pages/exploration-process-api-executing-a-new-program?module_item_id=22777102 
  *       https://canvas.oregonstate.edu/courses/1901764/pages/exploration-processes-and-i-slash-o?module_item_id=22777110
- * */
+ */
 int non_built_func(char *arguments[])
 {
   int child_status;
@@ -434,9 +440,10 @@ int non_built_func(char *arguments[])
 }
 
 /*
- * Desricption: Resets glbals variables used in parsing back to -1 for new loop
+ * Function Name: reset_globals
  * Arguments: None
- * Reutnrs: None
+ * Desricption: Resets glbals variables used in parsing back to -1 for new loop
+ * Retruns: None
  */
 void reset_globals()
 {
